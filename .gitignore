@@ -1,0 +1,5 @@
+
+*.TXT
+*/virtual_env
+virtual_env/
+.DS_Store
