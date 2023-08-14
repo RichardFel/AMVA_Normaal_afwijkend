@@ -9,9 +9,15 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import os
 
+
 # Logging
 today = datetime.date.today()
 logging.basicConfig(filename=f'Logging/logging_{today}.log', level = logging.WARNING, format='%(name)s - %(levelname)s - %(message)s')
+# file_details = pd.DataFrame(columns = ['Subject','Sensor_location','measurement',	'Flip_end'	,
+#                                        'Label_start',	'Label_stop',	'Expected_samples',
+#                                            	'Sensor_tot_samples',	'Sensor_sample_start'
+# ])
+# file_details.to_excel('Meta_data/file_details.xlsx', index=0)
 
 # Settings
 visualise = False
@@ -34,25 +40,32 @@ for file in os.listdir(data_path):
         continue
 
     subject, location = file.split('_')
-    sensor = location.split('.')[0]
+    sensor, measurement, _ = location.split('.')
 
     # Check if ankle sensor
-    if sensor != '1':
+    if sensor != '3':
         continue
 
     # Check if data already processed
-    if os.path.isfile(f'Processed_data/{subject}.csv'):
+    if os.path.isfile(f'Labelled_data/{subject}_{measurement}.csv'):
         continue
 
+    # Print
+    print(f'{subject}, sensor lacation {sensor}')
+    
     # Load data
     sensor_data = pd.read_csv(f'{data_path}/{file}', names = ['Time', 'Ax', 'Ay', 'Az', 
                                                 'Gx', 'Gy','Gz',
                                                 'Mx', 'My', 'Mz'])
     sensor_data.drop(columns=['Mx', 'My', 'Mz'], inplace=True)
-    labeled_data = pd.read_csv(f'Labels/{subject}.1.csv', names = ['Start','Eind','Duur', 'Activiteit',
-                                                                            'Label','Extra kolom','1','Filmnummer','2','3'],
-                                                                            sep=';', skiprows= 2)
-    
+    try:
+        labeled_data = pd.read_csv(f'Labels/{subject}.{measurement}.csv', names = ['Start','Eind','Duur', 'Activiteit',
+                                                                                'Label','Extra kolom','1','Filmnummer','2','3'],
+                                                                                sep=';', skiprows= 2)
+    except FileNotFoundError:
+        logging.warning(f'{file}: No labelled data')
+        continue
+
     # Calc sample freq
     measurement_time = (sensor_data.iloc[-1,0]  - sensor_data.iloc[0,0]) / 1000
     sample_freq =  len(sensor_data) / measurement_time  
@@ -66,18 +79,22 @@ for file in os.listdir(data_path):
     sensor_data = resample_data(sensor_data, sample_freq, Resample_freq)
 
     # Load labelled data
-    flip = labeled_data.dropna(subset=['Extra kolom']).iloc[1]
-    flip_time = int(flip['Extra kolom'])
-    start_label = datetime.datetime.strptime(flip['Eind'],'%H:%M:%S')
-    start_time = start_label.hour * 3600 + start_label.minute * 60 + start_label.second
-    labeled_data = labeled_data.dropna(subset=['Label'])
-    end = datetime.datetime.strptime(labeled_data['Eind'].iloc[-1],'%H:%M:%S')
-    end_time = end.hour * 3600 + end.minute * 60 + end.second
-    expected_samples =  (end_time - flip_time) * Resample_freq
+    try:
+        flip = labeled_data.dropna(subset=['Extra kolom']).iloc[1]
+        flip_time = int(flip['Extra kolom'])
+        start_label = datetime.datetime.strptime(flip['Eind'],'%H:%M:%S')
+        start_time = start_label.hour * 3600 + start_label.minute * 60 + start_label.second
+        labeled_data = labeled_data.dropna(subset=['Label'])
+        end = datetime.datetime.strptime(labeled_data['Eind'].iloc[-1],'%H:%M:%S')
+        end_time = end.hour * 3600 + end.minute * 60 + end.second
+        expected_samples =  (end_time - flip_time) * Resample_freq
+    except (ValueError, IndexError, TypeError):
+        logging.warning(f'{file}: Label error')
 
-    if len(sensor_data) < expected_samples:
-        logging.warning(f'{file}: missing data')
-        continue
+    sensor_samples = len(sensor_data)
+    # if sensor_samples < expected_samples:
+    #     logging.warning(f'{file}: missing data')
+    #     continue
 
     # find the flip in the data
     fig, ax = plt.subplots()
@@ -113,11 +130,13 @@ for file in os.listdir(data_path):
         plt.show()
 
     # Save data
-    labeled_sensor_data.to_csv(f'Processed_data/{subject}.csv')
+    labeled_sensor_data.to_csv(f'Labelled_data/{subject}_{measurement}.csv')
 
     # Save metadata
-    file_details.loc[subject] = [subject, sensor, flip_time, start_time,end_time, int(x[0][0])] 
+    file_details.loc[subject] = [subject, sensor, measurement, flip_time, start_time,end_time, expected_samples, sensor_samples, int(x[0][0])] 
     file_details.to_excel('Meta_data/file_details.xlsx', index=0)
 
+    # Close plot
+    plt.close('all')
 
 #%%
