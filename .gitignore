@@ -4,3 +4,5 @@
 virtual_env/
 .DS_Store
 *.csv
+Characteristics/AMVA_karakteristieken_lopend_def.xlsx
+*.xlsx
