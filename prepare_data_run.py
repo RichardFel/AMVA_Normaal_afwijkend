@@ -9,12 +9,15 @@ import matplotlib.pyplot as plt
 # Settings
 data_path = 'Labelled_data'
 
-zitten = [2,3,4,9,14,15,16,17]
+zitten = [2, 3, 4, 9, 14, 15, 16, 17]
+rennen = [7, 8]
 fietsen = [23]
-lopen = [5,6,7,8,18,19,22,26]
-overig = [10,12,13,33]
+lopen = [5, 6,  18, 19, 22, 26]
+overig = [10, 12, 13, 33]
 
 # functions
+
+
 def def_categories(x):
     if x in zitten:
         return 0
@@ -22,10 +25,10 @@ def def_categories(x):
         return 1
     elif x in lopen:
         return 2
-    elif x in overig:
+    elif x in rennen:
         return 3
-
-    
+    elif x in overig:
+        return 4
 
 
 for file in os.listdir(data_path):
@@ -38,11 +41,9 @@ for file in os.listdir(data_path):
 
     # Drop unused sections of data
     sensor_data = sensor_data.dropna(subset=['Categories'])
-    sensor_data = sensor_data.drop(columns=['Time','Label'])
+    sensor_data = sensor_data.drop(columns=['Time', 'Label'])
 
     # Save data to processed_data
-    sensor_data.to_csv(f'Processed_data/{file}')
+    sensor_data.to_csv(f'Processed_data_run/{file}')
 
 #%%
-
-
