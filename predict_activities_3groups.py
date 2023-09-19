@@ -169,6 +169,8 @@ results_all = {}
 results_young = {}
 results_old = {}
 results_pd = {}
+results_age = {}
+
 
 unique_part = np.unique(part_clean)
 young = charact.loc[charact['Leeftijd'] < 13, 'Proefpersoonnummer'].unique()
@@ -180,7 +182,7 @@ abnormal = charact.loc[charact['Onderzoeksgroep'] == 'afwijkend looppatroon']
 abnormal = unique_part[np.isin(unique_part, abnormal)]
 
 batch_size = 5
-repeat = 1
+repeat = 10
 groups = {'unique_part': unique_part, 'young': young,
           'abnormal': abnormal, 'old': old}
 # Split 20/80 for the train/validate set
@@ -288,6 +290,24 @@ for i in range(repeat):
                     selected_batch, selection, n_epochs, train_acc, val_acc, overall_accuracy,
                     weighted_recall, weighted_precision, weighted_f1_score, confusion_mat, normalized_confusion_mat]
 
+            for part in selected_batch:
+                # Select individual
+                idx_tmp_data = np.where(np.isin(part_clean, part))[0]
+                tmp_data = data_clean[idx_tmp_data, :, :]
+                tmp_outcome = y_one_hot[idx_tmp_data]
+                tmp_data, tmp_outcome = shuffle(tmp_data, tmp_outcome)
+                tmp_predictions = model.predict(tmp_data)
+
+                # Convert one-hot encoded predictions to labels
+                tmp_predictions = np.argmax(tmp_predictions, axis=1)
+                tmp_labels = np.argmax(tmp_outcome, axis=1)
+
+                # Calculate outcomes per individual
+                overall_accuracy = accuracy_score(tmp_labels, tmp_predictions)
+                part_data = charact.loc[charact['Proefpersoonnummer'] == part, [
+                    'Onderzoeksgroep', 'Leeftijd']].values[0]
+                results_age[f'{i}_{counter}_{part}'] = [
+                    part, part_data[0], part_data[1], overall_accuracy]
 
 results_all = pd.DataFrame.from_dict(results_all, orient='index', columns=['selected_batch', 'selection', 'n_epochs', 'train_acc',
                                                                            'val_acc', 'overall_accuracy', 'weighted_recall',
@@ -313,6 +333,9 @@ results_pd = pd.DataFrame.from_dict(results_pd, orient='index', columns=['select
                                                                          'normalized_confusion_mat'])
 results_pd.to_excel('Results/results_pd_l5o.xlsx')
 
+results_age = pd.DataFrame.from_dict(results_age, orient='index', columns=[
+                                     'Subject', 'Type', 'Age', 'overall_accuracy'])
+results_age.to_excel('Results/results_age_l5o.xlsx')
 
 # %%
 # Results all data
@@ -326,47 +349,47 @@ confidence = 0.95
 
 for name, df in results.items():
     print(name)
-    avg_acc = round(df['overall_accuracy'].mean(), 2)
-    std_acc = round(df['overall_accuracy'].std(), 2)
-    sem = stats.sem(df['overall_accuracy'])
-    ci_acc = np.round(stats.t.interval(confidence, len(
-        df['overall_accuracy'])-1, loc=avg_acc, scale=sem), 2)
-    # min_acc = round(df['overall_accuracy'].min(), 2)
-    # max_acc = round(df['overall_accuracy'].max(), 2)
+    avg_acc = round(df['overall_accuracy'].mean() * 100, 1)
+    std_acc = round(df['overall_accuracy'].std() * 100, 1)
+    # sem = round(stats.sem(df['overall_accuracy']) * 100, 1)
+    # ci_acc = np.round(stats.t.interval(confidence, len(
+    #     df['overall_accuracy'])-1, loc=avg_acc, scale=sem), 1)
+    min_acc = round(df['overall_accuracy'].min() * 100, 1)
+    max_acc = round(df['overall_accuracy'].max() * 100, 1)
 
-    avg_f1 = round(df['weighted_f1_score'].mean(), 2)
-    std_f1 = round(df['weighted_f1_score'].std(), 2)
-    sem = stats.sem(df['weighted_f1_score'])
-    ci_f1 = np.round(stats.t.interval(confidence, len(
-        df['weighted_f1_score'])-1, loc=avg_acc, scale=sem), 2)
+    avg_f1 = round(df['weighted_f1_score'].mean() * 100, 1)
+    std_f1 = round(df['weighted_f1_score'].std() * 100, 1)
+    # sem = round(stats.sem(df['weighted_f1_score']) * 100, 1)
+    # ci_f1 = np.round(stats.t.interval(confidence, len(
+    #     df['weighted_f1_score'])-1, loc=avg_acc, scale=sem) * 100, 1)
 
-    # min_f1 = round(df['weighted_f1_score'].min(), 2)
-    # max_f1 = round(df['weighted_f1_score'].max(), 2)
+    min_f1 = round(df['weighted_f1_score'].min() * 100, 1)
+    max_f1 = round(df['weighted_f1_score'].max() * 100, 1)
 
-    avg_recall = round(df['weighted_recall'].mean(), 2)
-    std_recall = round(df['weighted_recall'].std(), 2)
-    sem = stats.sem(df['weighted_recall'])
-    ci_recall = np.round(stats.t.interval(confidence, len(
-        df['weighted_recall'])-1, loc=avg_acc, scale=sem), 2)
+    avg_recall = round(df['weighted_recall'].mean() * 100, 1)
+    std_recall = round(df['weighted_recall'].std() * 100, 1)
+    # sem = round(stats.sem(df['weighted_recall']) * 100, 1)
+    # ci_recall = np.round(stats.t.interval(confidence, len(
+    #     df['weighted_recall'])-1, loc=avg_acc, scale=sem) * 100, 1)
 
-    # min_recall = round(df['weighted_recall'].min(), 2)
-    # max_recall = round(df['weighted_recall'].max(), 2)
+    min_recall = round(df['weighted_recall'].min() * 100, 1)
+    max_recall = round(df['weighted_recall'].max() * 100, 1)
 
-    avg_precision = round(df['weighted_precision'].mean(), 2)
-    std_precision = round(df['weighted_precision'].std(), 2)
-    sem = stats.sem(df['weighted_precision'])
-    ci_precision = np.round(stats.t.interval(confidence, len(
-        df['weighted_precision'])-1, loc=avg_acc, scale=sem), 2)
+    avg_precision = round(df['weighted_precision'].mean() * 100, 1)
+    std_precision = round(df['weighted_precision'].std() * 100, 1)
+    # sem = round(stats.sem(df['weighted_precision']) * 100, 1)
+    # ci_precision = np.round(stats.t.interval(confidence, len(
+    #     df['weighted_precision'])-1, loc=avg_acc, scale=sem) * 100, 1)
 
-    # min_precision = round(df['weighted_precision'].min(), 2)
-    # max_precision = round(df['weighted_precision'].max(), 2)
+    min_precision = round(df['weighted_precision'].min() * 100, 1)
+    max_precision = round(df['weighted_precision'].max() * 100, 1)
 
-    print(f'Accuracy {avg_acc} ({std_acc}), [{ci_acc[0]},{ci_acc[1]}]')
-    print(f'F1 {avg_f1} ({std_f1}), [{ci_f1[0]},{ci_f1[1]}]')
+    print(f'Accuracy {avg_acc} ({std_acc}), [{min_acc},{max_acc}]')
+    print(f'F1 {avg_f1} ({std_f1}), [{min_f1},{max_f1}]')
     print(
-        f'Recall {avg_recall} ({std_recall}), [{ci_recall[0]},{ci_recall[1]}]')
+        f'Recall {avg_recall} ({std_recall}), [{min_recall},{max_recall}]')
     print(
-        f'Precision {avg_precision} ({std_precision}), [{ci_precision[0]},{ci_precision[1]}]')
+        f'Precision {avg_precision} ({std_precision}), [{min_precision},{max_precision}]')
     normalized_confusion_mat = df['normalized_confusion_mat']
     for idx, matrix in normalized_confusion_mat.items():
         for j in matrix:
@@ -395,5 +418,19 @@ for name, df in results.items():
     fig.tight_layout()
     fig.savefig(f'Figures/Confusion_matrix_3groups_{name}.png', dpi=400)
 
+
+# %%
+sns.set_style("whitegrid")
+results_age['Age'] = results_age['Age'].astype('int32')
+results_age['overall_accuracy'] *= 100
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.lineplot(data=results_age, x='Age', y='overall_accuracy', ax=ax)
+ax.set_ylim(60, 90)
+ax.set_xlim(-1, 21)
+ax.set_xlabel('Age [years]')
+ax.set_ylabel('Accuracy')
+ax.set_title('Model accuracy per age')
+fig.tight_layout()
+fig.savefig(f'Figures/Accuracy_per_age.png', dpi=400)
 
 # %%
