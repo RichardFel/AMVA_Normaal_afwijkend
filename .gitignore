@@ -6,3 +6,5 @@ virtual_env/
 *.csv
 Characteristics/AMVA_karakteristieken_lopend_def.xlsx
 *.xlsx
+*.1.csv
+!requirements.txt
